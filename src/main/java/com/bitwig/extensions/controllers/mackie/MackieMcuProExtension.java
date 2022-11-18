@@ -115,6 +115,7 @@ public class MackieMcuProExtension extends ControllerExtension {
    @Override
    public void init() {
       host = getHost();
+      DebugUtil.host = host;
       RemoteConsole.init(host);
       surface = host.createHardwareSurface();
       transport = host.createTransport();
@@ -169,6 +170,7 @@ public class MackieMcuProExtension extends ControllerExtension {
 
       setUpMidiSysExCommands();
       mainLayer.activate();
+      sections.forEach(MixControl::init);
       host.showPopupNotification(
          " Initialized " + getExtensionDefinition().getName() + " " + getExtensionDefinition().getVersion());
       sections.forEach(MixControl::resetFaders);
@@ -191,13 +193,13 @@ public class MackieMcuProExtension extends ControllerExtension {
    }
 
    public void initChannelSections() {
-      mainSection = new MixControl(this, midiIn, midiOut, nrOfExtenders, SectionType.MAIN);
+      mainSection = new MixControl(this, midiIn, midiOut, nrOfExtenders, SectionType.MAIN, false);
       sections.add(mainSection);
       for (int i = 0; i < nrOfExtenders; i++) {
          final MidiOut extMidiOut = host.getMidiOutPort(i + 1);
          final MidiIn extMidiIn = host.getMidiInPort(i + 1);
          if (extMidiIn != null && extMidiOut != null) {
-            final MixControl extenderSection = new ExtenderMixControl(this, extMidiIn, extMidiOut, i);
+            final MixControl extenderSection = new ExtenderMixControl(this, extMidiIn, extMidiOut, i, false);
             sections.add(extenderSection);
          }
       }
@@ -531,6 +533,8 @@ public class MackieMcuProExtension extends ControllerExtension {
 
       final MainUnitButton timeModeButton = new MainUnitButton(this, BasicNoteOnAssignment.DISPLAY_SMPTE,
          controllerConfig.getSimulationLayout());
+      timeModeButton.bindLight(mainLayer, () -> ledDisplay.getMode() == TimeCodeLed.Mode.BEATS);
+      timeModeButton.bindPressed(mainLayer, () -> ledDisplay.toggleMode());
    }
 
    private void initUndoRedo() {
